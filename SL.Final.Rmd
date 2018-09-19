@@ -1,0 +1,204 @@
+---
+title: "IDS Final Project"
+author: "Bilwa Wagh, Gina O'Riordan, Mitchell Speer, Sharif Nijim"
+date: "09/17/2018"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# initialize the environment
+rm(list=ls()) 
+# load the libraries and data
+setwd("/Volumes/GoogleDrive/My Drive/MSDS/04.SL/SL.Team.Project") #Sharif
+library(tools)
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+#library(mosaic)
+library(rpart)
+library(rpart.plot)
+library(partykit)
+#library(NHANES)
+library(randomForest)
+library(class)
+#library(neuralnet)
+```
+ 
+#1 - Download the data
+```{r}
+absentee <- read.csv("./Absenteeism_at_work.csv", sep = ';')
+glimpse(absentee)
+```
+  
+#2 - Basic exploratory data analysis
+```{r}
+# check for missing data
+sum(is.na(absentee))
+```
+## Explore Reason for Absence
+```{r}
+# Explore Reason for Absence
+table(absentee$Reason.for.absence)
+```
+```{r}
+# Explore Reason for Absence
+hist(absentee$Reason.for.absence)
+```
+```{r}
+# Explore Month of absence
+table(absentee$Month.of.absence)
+```
+```{r}
+# Explore Reason for Absence
+hist(absentee$Month.of.absence)
+```
+```{r}
+# Explore Day of the week
+table(absentee$Day.of.the.week)
+```
+```{r}
+# Explore Day of the week
+hist(absentee$Day.of.the.week)
+```
+```{r}
+# Explore seasons
+table(absentee$Seasons)
+```
+```{r}
+# Explore seasons
+hist(absentee$Seasons)
+```
+```{r}
+# Explore Transportation expense
+table(absentee$Transportation.expense)
+```
+```{r}
+# Explore Transportation expense
+hist(absentee$Transportation.expense)
+```
+```{r}
+# Explore Distance from residence
+table(absentee$Distance.from.Residence.to.Work)
+```
+```{r}
+# Explore Distance from residence
+hist(absentee$Distance.from.Residence.to.Work)
+```
+```{r}
+# Explore Service time
+table(absentee$Service.time)
+```
+```{r}
+# Explore Service time
+hist(absentee$Service.time)
+```
+```{r}
+# Explore Age
+table(absentee$Age)
+```
+```{r}
+# Explore Reason for Absence
+hist(absentee$Age)
+```
+```{r}
+# Explore work load average
+table(absentee$Work.load.Average.day)
+```
+```{r}
+# Explore work load average
+hist(absentee$Work.load.Average.day)
+```
+```{r}
+# Explore hit target
+table(absentee$Hit.target)
+```
+```{r}
+# Explore hit target
+hist(absentee$Hit.target)
+```
+```{r}
+# Explore disciplinary failure
+table(absentee$Disciplinary.failure)
+```
+```{r}
+# Explore disciplinary failure
+hist(absentee$Disciplinary.failure)
+```
+```{r}
+# Explore Education
+table(absentee$Education)
+```
+```{r}
+# Explore Education
+hist(absentee$Education)
+```
+```{r}
+# Explore number of children
+table(absentee$Son)
+```
+```{r}
+# Explore number of children
+hist(absentee$Son)
+```
+```{r}
+# Explore social drinker
+table(absentee$Social.drinker)
+```
+```{r}
+# Explore social drinker
+hist(absentee$Social.drinker)
+```
+```{r}
+# Explore social smoker
+table(absentee$Social.smoker)
+```
+```{r}
+# Explore social smoker
+hist(absentee$Social.smoker)
+```
+```{r}
+# Explore pet ownership
+table(absentee$Pet)
+```
+```{r}
+# Explore pet ownership
+hist(absentee$Pet)
+```
+```{r}
+# Explore weight
+table(absentee$Weight)
+```
+```{r}
+# Explore weight
+hist(absentee$Weight)
+```
+```{r}
+# Explore height
+table(absentee$Height)
+```
+```{r}
+# Explore height
+hist(absentee$Height)
+```
+```{r}
+# Explore BMI
+table(absentee$Body.mass.index)
+```
+```{r}
+# Explore BMI
+hist(absentee$Body.mass.index)
+```
+```{r}
+# Explore Absenteeism time in hours
+table(absentee$Absenteeism.time.in.hours)
+```
+```{r}
+# Explore Absenteeism time in hours
+hist(absentee$Absenteeism.time.in.hours)
+```
+```{r}
+# explore
+tp <- absentee %>%
+  filter(Hit.target == 100)
+hist(absentee$Month.of.absence)
+```
