@@ -21,6 +21,17 @@ library(partykit)
 #library(NHANES)
 library(randomForest)
 library(class)
+library(tidyverse)
+library(reshape2)
+library(caret)
+library(mlbench)
+library(stats)
+library(locfit)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(caret, knitr, dplyr, kableExtra, rpart, rpart.plot,
+               MASS, tree, ggplot2, randomForest, obliqueRF,partykit)
+pacman::p_load(mlbench, caret, knitr, LogicReg, dplyr, rminer, ROCR, pROC)
+options(warn=-1)
 #library(neuralnet)
 ```
  
@@ -238,172 +249,133 @@ table(absentee$Social.smoker)
 ```
 ```{r}
 # create a new dataset without Disciplinary Failure and Social Smoker
-absentee.work <- absentee %>%
+absentee.sparse <- absentee %>%
   dplyr::select(-Disciplinary.failure, -Social.smoker)
 ```
 
-# Bagging and RSSL
-
+### Run regular trees, boosted trees, bagged trees, random forest, weighted random forest, and balanced random forest
 ```{r}
-####################### 1.
-##  Set up - aka intializing variables
+# convert Absenteeism.time.in.hours into a factor
+absentee.work <- absentee %>%
+  mutate(Absenteeism.time.in.hours = as.factor(ifelse(absentee$Absenteeism.time.in.hours < 16, "D","W")))
 
-B = 50 # this is the number of base learners you want to create
+#50 replications and a 60%-training/40%-test data split to compute the average test error
+set.seed(1842)
+R = 50 # set the number of replications
+# create the error matrix to store values
+error_matrix = matrix(0, ncol=6, nrow=R)
 
-# storing a few key variables below 
-n = nrow(absentee.work) # number of obs
-q = ncol(absentee.work) - 1 # number of attributes
-d = min(round(sqrt(q)), round(n/5)) # RSSL attribute selection
+# set up train control
+fitControl = trainControl(method = "cv",
+                          number = 5,
+                          returnData = TRUE,
+                          returnResamp = "final",
+                          summaryFunction = twoClassSummary,
+                          classProbs = TRUE)
 
-# empty matrices to store model parameters
-mbeta_bag = matrix(0, nrow=B, ncol=(q+1))
-mbeta_rssl = matrix(0, nrow=B, ncol=(q+1))
+## RF v Weighted RF v Balanced RF
+# set up train control to do CV
+tunegrid = expand.grid(.cp=seq(.01:.1,by=.01)) # tune the complexity parameter
+tunegrid_bag = expand.grid(.cp=seq(.01:.1,by=.01)) # tune the complexity parameter
+# Try boosting
+# NB - boosting commented out based on Mattermost post
+#tunegrid_boost = expand.grid(mstop = c(100,200,500), maxdepth = 1:2, nu = c(0.1, 0.01, 0.001))
 
 
-####################### 2. 
-## Replication loop for model creating and storing- 
-## this is where you create the base learners!
-
-for(b in 1:B){ # setting up the replication loop
-
-    # storing the sampling IDs
-    id.boot = sample(n, replace=T) # bootstrap
-    id.bag = 1:q                             # No subset selection: Bagged
-    id.rssl = sort(sample(1:q, d, replace=F)) # Equal weight selection: RSSL
-    
-    # sample the data set
-    dat.bag = absentee.work[id.boot, c(1, 1 + id.bag)]    # Bagged data 
-    dat.rssl = absentee.work[id.boot, c(1, 1 + id.rssl)]    # RSSL data 
-    
-    # OLS models from sampled data sets
-    bag_mod = glm(Absenteeism.time.in.hours ~ ., data = dat.bag) # model with bagged data
-    rssl_mod = glm(Absenteeism.time.in.hours ~ ., data = dat.rssl) # model with rssl data
-    
-    # Store the model parameters for aggregation
-    mbeta_bag[b, c(1, 1 + id.bag)] = coef(bag_mod)   # bagged
-    mbeta_rssl[b, c(1, 1 + id.rssl)] = coef(rssl_mod)   # RSSL
+for (r in 1:R) {
+  
+  # training test split
+  id = holdout(absentee.work$Absenteeism.time.in.hours,
+               ratio=.6,
+               mode='stratified')
+  
+  absentee.tr = absentee.work[id$tr,]
+  absentee.te = absentee.work[id$ts,]
+  
+  # a. Run regular trees
+  tree_mod = rpart(Absenteeism.time.in.hours ~ ., data = absentee.tr)      
+  
+  # b. run bagged trees
+  bag_mod = train(Absenteeism.time.in.hours ~ ., 
+                  absentee.tr, 
+                  method ='treebag', 
+                  trControl = fitControl,
+                  metric = "ROC",
+                  preProc = c("center", "scale"),
+                  nbagg = 7)
+  
+  # c. Run Random Forest (100 trees)  
+  rf_reg = randomForest(Absenteeism.time.in.hours ~ ., 
+                        absentee.tr, 
+                        ntree = 100,
+                        trControl = fitControl,
+                        metric = "ROC",
+                        tuneGrid = tunegrid)
+  
+  # d. Run Weighted Random Forest (100 trees)  
+  rf.weighted1 = randomForest(Absenteeism.time.in.hours ~ ., 
+                              absentee.tr, 
+                              ntree = 100,
+                              trControl = fitControl,
+                              metric = "ROC",
+                              classwt=c(.01,1),
+                              tuneGrid = tunegrid)
+  
+  # e. Run Weighted Random Forest (100 trees)  
+  rf.weighted2 = randomForest(Absenteeism.time.in.hours ~ ., 
+                              absentee.tr, 
+                              ntree = 100,
+                              trControl = fitControl,
+                              metric = "ROC",
+                              classwt=c(1,.01),
+                              tuneGrid = tunegrid)
+  
+  
+  # f. Run Balanced Random Forest (100 trees)  
+  #nmin = sum(absentee.tr$Class=='bad') # minority class is bad
+  rf_balanced_under = randomForest(Absenteeism.time.in.hours ~ ., 
+                                   absentee.tr, 
+                                   ntree = 100,
+                                   sample_size = rep(nmin, 2),
+                                   trControl = fitControl,
+                                   metric = "ROC",
+                                   tuneGrid = tunegrid)
+  
+  # prediction    
+### Run regular trees, boosted trees, bagged trees, random forest, weighted random forest, and balanced random forest
+  yhat_tree = predict(tree_mod, absentee.te[,-21], type = 'class')
+  # NB - boosting commented out based on Mattermost post
+  #yhat_boost <- predict(tree_boost, absentee.te[,-21])
+  yhat_bag = predict(bag_mod, absentee.te[,-21])
+  yhat_rf = predict(rf_reg, absentee.te[,-21])
+  yhat_under = predict(rf_balanced_under, absentee.te[,-21])
+  yhat_weighted1 = predict(rf.weighted1, absentee.te[,-21])
+  yhat_weighted2 = predict(rf.weighted2, absentee.te[,-21])
+  
+  # store the errors in the matrix
+  error_matrix[r,1] = mean(yhat_tree!=absentee.te[,21])
+  # NB - boosting commented out based on Mattermost post
+  #error_matrix[r,2] = mean(yhat_boost!=absentee.te[,21])
+  error_matrix[r,2] = mean(yhat_bag!=absentee.te[,21])
+  error_matrix[r,3] = mean(yhat_rf!=absentee.te[,21])
+  error_matrix[r,4] = mean(yhat_under!=absentee.te[,21])
+  error_matrix[r,5] = mean(yhat_weighted1!=absentee.te[,21])
+  error_matrix[r,6] = mean(yhat_weighted2!=absentee.te[,21])
+  
+  # just a nice statement to tell you when each loop is done
+  cat("Finished Rep",r, "\n")
 }
-# the above loop is farily fast with our simulated data so
-# I placed the cat statement outside it 
-cat("Done with all", B," base learners \n") 
-
-
-####################### 3.
-## Predictions
-
-
-# to save space, clarify which type (RSSL or Bagged) of ensemble you want to
-# make predictions with by commenting out of of the below type statements
-
-type = 'RSSL' # for RSSL
-type = 'Bagged' # for Bagged
-
-switch(type, RSSL = {mbeta = mbeta_rssl}, Bagged = {mbeta = mbeta_bag})
-
-#  xnew is the test set normally
-xnew = x = cbind(x_1, x_2) # the original attributes
-# add a column of all 1s to data frame for the intercept
-x = cbind(rep(1, nrow(xnew)),xnew) 
-nnew = ncol(xnew) + 1 # number of total columns
-alpha = matrix(1/B, nrow=B, ncol=nnew) # Equally weight the base learners
-delta = alpha * mbeta # weighted parameters
-yhats = colSums(1/(1 + exp(-delta %*% t(x)))) # final overall predictions
-
-
-#Note that this isn't matrix multiplication! 
-#Instead we want to multiply the 1st column with the 1st column, 2nd with 2nd, 
-#and 3rd wiht 3rd ONLY! Our goal is to weight the predictions in mbeta by our alpha scheme. 
-#Here we're equally weighting, so every point in alpha is the same, 
-#so we could replace  alpha * mbeta with .02 * mbeta.
-
-
-# Boosting
- 
-#Again, I've split up the code into 3 chunks for easier reading.
-
-####################### 1. 
-## Set up - aka intializing variables
-
-
-# storing a few key variables below 
-y = absentee.work$y # response
-n = nrow(absentee.work) # no. obs
-m = round(0.75*n) # we don't use every obs every time
-# so store what should be 75% of them
-Tr = 20     # Number of base learners
-
-alpha = numeric(Tr) # initialize 
-epsilon = numeric(Tr) # initialize error vector
-weight = rep(1/n, n) # initialize obs weighting scheme vector
-# start with equal weighting
-h = NULL # initialize object to store models
-
-
-
-####################### 2. 
-## Replication loop for model creating and storing- this is where you create the base learners!
-##  Note that the point of only storing decent base learners is because we aim 
-##  to create an overall better model by minimizing a loss function. 
-##  For the following chunk of code, the loss function used is the exponential 
-##  loss function $\frac{1}{n}\sum_{i=1}^{n}\text{exp}(-y_iF(x_i))$
-    
-
-for(t in 1:Tr)	
-{
-    decent_base_learner = 0 # start with no decent base learners
-    while(!decent_base_learner) # while there is none,
-        # do the following:
-    {   
-        # bootstrap data with weighting scheme
-        # this weighting scheme will update with every model
-        # to favor obs. that are harder to predict
-        # don't use all attributes
-        boost_id = sample(1:n, m, replace=T, prob=weight) # bootstrap
-        # create a base learner based on the bootstrap sample above
-        base_learner = glm(y~., data=absentee.work, subset=boost_id)
-        # predict with the base learner
-        yhat = predict(base_learner, subset(absentee.work,select=-y))
-        # calulate the exponential loss
-        epsilon_candidate = mean(exp(-yhat*y))
-        # if our error is less than .5, aka decent,
-        # then it's a good learner and we're done
-        decent_base_learner = (epsilon_candidate < 0.5)
-    }
-    
-    # store the candidate's error 
-    # pad errors of 0 slightly to allow division
-    if(epsilon.candidate==0){epsilon_candidate = .0001}
-    
-    epsilon[t] = epsilon_candidate
-    # reconfigure model's weight
-    alpha[t] = (1/2)*log((1-epsilon[t])/epsilon[t])
-    weight = weight*exp(-alpha[t]*y*yhat)
-    # make the weight a probability that sums to 1  
-    weight = weight/sum(weight)
-    
-    # add the base learner to the list
-    h = c(h, list(base_learner))	
-}
-# return the model's weight, base learners, and weight
-return(list(alpha=alpha, h=h, weight=weight))
-
-
-####################### 3. Predictions
-
-# predict from the boosted glm
-predict.boosted.glm <- function(h, alpha, xnew)
-{
-    #  get how many base learners are used
-    Tr      <- length(h)
-    # find the number of obs
-    nnew   <- nrow(xnew)
-    # create an empty list
-    h.t.x  <- NULL
-        # loop through all the learners to predict
-        for(t in 1:Tr){h.t.x <- cbind(h.t.x, pm(round(predict(h[[t]],xnew, type='response'))))}
-    # put the model weight with the model's prediction for each obs
-    m.alpha <- matrix(rep(alpha, nnew), byrow=Tr, nrow=nnew)
-    # keep only one prediction per obs based on the highest model weight
-    return(ifelse(rowSums(m.alpha*h.t.x)<0,-1,+1))   
-} 
+```
+  
+## 2. Generate comparative boxplots showing the test errors (total of 6 boxplots).  
+```{r}
+# Label the columns
+colnames(error_matrix) = c('Trees', 'Bagged-Trees', 'RF', 'Weighted_RF1', 'Weighted_RF2', 'Balanced_RF')
+#melt the matrix
+error_matrix_melt = melt(as.data.frame(error_matrix))
+#rename the columns
+colnames(error_matrix_melt) = c('Method','Error')
+#boxplot of the errors
+ggplot(error_matrix_melt,mapping=aes(x=Method,y=Error))+
+            geom_boxplot()
 ```
