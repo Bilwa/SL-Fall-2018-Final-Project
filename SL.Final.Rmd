@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # initialize the environment
 rm(list=ls()) 
 # load the libraries and data
-#setwd("/Volumes/GoogleDrive/My Drive/MSDS/04.SL/SL.Team.Project") #Sharif
+setwd("/Volumes/GoogleDrive/My Drive/MSDS/04.SL/SL.Team.Project") #Sharif
 library(tools)
 library(tidyverse)
 library(ggplot2)
@@ -40,9 +40,6 @@ sum(is.na(absentee))
 # Explore Reason for Absence
 table(absentee$Reason.for.absence)
 ```
-
-B- 43 missing values with reason = 0
-
 ```{r}
 # Explore Reason for Absence
 hist(absentee$Reason.for.absence)
@@ -51,19 +48,10 @@ hist(absentee$Reason.for.absence)
 # Explore Month of absence
 table(absentee$Month.of.absence)
 ```
-
-B- Three missing values where month = 0
-```{r}
-absentee %>%
-  filter(Month.of.absence == 0)
-```
-
-
 ```{r}
 # Explore Reason for Absence
 hist(absentee$Month.of.absence)
 ```
-
 ```{r}
 # Explore Day of the week
 table(absentee$Day.of.the.week)
@@ -209,33 +197,17 @@ table(absentee$Absenteeism.time.in.hours)
 hist(absentee$Absenteeism.time.in.hours)
 ```
 ```{r}
-# explore
-tp <- absentee %>%
-  filter(Hit.target == 100)
-hist(absentee$Month.of.absence)
-```
-
-
-```{r}
-ggplot(absentee, aes(as.factor(Reason.for.absence), Absenteeism.time.in.hours, color = as.factor(Month.of.absence))) + geom_point()
-```
-
-```{r}
-absentee %>%
-  filter(Absenteeism.time.in.hours <= 40) %>%
-ggplot(aes( Absenteeism.time.in.hours, Distance.from.Residence.to.Work)) + geom_col()
-```
-
-
-
-
-```{r}
-ggplot(absentee, aes(as.factor(absentee$Hit.target), Absenteeism.time.in.hours)) + geom_boxplot()
+# explore sparseness
+table(absentee$Disciplinary.failure)
+# pretty sparse - get rid of it
 ```
 ```{r}
-ggplot(absentee, aes(absentee$Age, absentee$Absenteeism.time.in.hours)) + geom_point()
+# explore sparseness
+table(absentee$Social.smoker)
+# pretty sparse - get rid of it
 ```
-
 ```{r}
-ggplot(absentee, aes(absentee$Month.of.absence, absentee$Absenteeism.time.in.hours, fill = as.factor(absentee$Day.of.the.week))) + geom_col()
+# create a new dataset without Disciplinary Failure and Social Smoker
+absentee.work <- absentee %>%
+  dplyr::select(-Disciplinary.failure, -Social.smoker)
 ```
