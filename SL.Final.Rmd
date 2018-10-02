@@ -379,3 +379,7 @@ colnames(error_matrix_melt) = c('Method','Error')
 ggplot(error_matrix_melt,mapping=aes(x=Method,y=Error))+
             geom_boxplot()
 ```
+
+##TODO: Not AIC, BIC, MallowsCP ## Don't have to do this
+##TODO: Accuracy, specificity, sensitivity
+##TODO: LDA/QDA
