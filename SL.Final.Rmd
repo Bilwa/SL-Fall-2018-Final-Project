@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # initialize the environment
 rm(list=ls()) 
 # load the libraries and data
-setwd("/Volumes/GoogleDrive/My Drive/MSDS/04.SL/SL.Team.Project") #Sharif
+setwd("~/Documents/GitHub/SL-Fall-2018-Final-Project") #Bilwa
 library(tools)
 library(tidyverse)
 library(ggplot2)
@@ -264,7 +264,8 @@ set.seed(1842)
 R = 50 # set the number of replications
 # create the error matrix to store values
 error_matrix = matrix(0, ncol=6, nrow=R)
-
+sensitivity_matrix = matrix(0, ncol=6, nrow=R)
+specificity_matrix =  matrix(0, ncol=6, nrow=R)
 # set up train control
 fitControl = trainControl(method = "cv",
                           number = 5,
@@ -362,6 +363,32 @@ for (r in 1:R) {
   error_matrix[r,5] = mean(yhat_weighted1!=absentee.te[,21])
   error_matrix[r,6] = mean(yhat_weighted2!=absentee.te[,21])
   
+  cf <- confusionMatrix(yhat_tree,absentee.te[,21])
+  sensitivity_matrix[r,1] = cf$byClass[1]
+  specificity_matrix[r,1] = cf$byClass[2]
+  # NB - boosting commented out based on Mattermost post
+  #sensitivity_matrix[r,2] = mean(yhat_boost!=absentee.te[,21])
+  cf <- confusionMatrix(yhat_bag,absentee.te[,21])
+  sensitivity_matrix[r,2] = cf$byClass[1]
+  specificity_matrix[r,2] = cf$byClass[2]
+  
+  cf <- confusionMatrix(yhat_rf,absentee.te[,21])
+  sensitivity_matrix[r,3] = cf$byClass[1]
+  specificity_matrix[r,3] = cf$byClass[2]
+  
+  cf <- confusionMatrix(yhat_under,absentee.te[,21])
+  sensitivity_matrix[r,4] =cf$byClass[1]
+  specificity_matrix[r,4] = cf$byClass[2]
+  
+  cf <- confusionMatrix(yhat_weighted1,absentee.te[,21])
+  sensitivity_matrix[r,5] =cf$byClass[1]
+  specificity_matrix[r,5] = cf$byClass[2]
+  
+  cf <- confusionMatrix(yhat_weighted2,absentee.te[,21])
+  sensitivity_matrix[r,6] = cf$byClass[1]
+  specificity_matrix[r,6] = cf$byClass[2]
+  
+
   # just a nice statement to tell you when each loop is done
   cat("Finished Rep",r, "\n")
 }
@@ -380,6 +407,34 @@ ggplot(error_matrix_melt,mapping=aes(x=Method,y=Error))+
             geom_boxplot()
 ```
 
+
+
+```{r}
+# Label the columns
+colnames(error_matrix) = c('Trees', 'Bagged-Trees', 'RF', 'Weighted_RF1', 'Weighted_RF2', 'Balanced_RF')
+#melt the matrix
+sensitivity_matrix_melt = melt(as.data.frame(sensitivity_matrix))
+#rename the columns
+colnames(sensitivity_matrix_melt) = c('Method','Sensitivity')
+#boxplot of the errors
+ggplot(sensitivity_matrix_melt,mapping=aes(x=Method,y=Sensitivity))+
+            geom_boxplot()
+```
+
+
+```{r}
+# Label the columns
+colnames(error_matrix) = c('Trees', 'Bagged-Trees', 'RF', 'Weighted_RF1', 'Weighted_RF2', 'Balanced_RF')
+#melt the matrix
+specificity_matrix_melt = melt(as.data.frame(specificity_matrix))
+#rename the columns
+colnames(specificity_matrix_melt) = c('Method','specificity')
+#boxplot of the errors
+ggplot(specificity_matrix_melt,mapping=aes(x=Method,y=specificity))+
+            geom_boxplot()
+```
 ##TODO: Not AIC, BIC, MallowsCP ## Don't have to do this
 ##TODO: Accuracy, specificity, sensitivity
+
+
 ##TODO: LDA/QDA
