@@ -1,5 +1,5 @@
 ---
-title: "IDS Final Project"
+title: "SL Final Project"
 author: "Bilwa Wagh, Gina O'Riordan, Mitchell Speer, Sharif Nijim"
 date: "09/17/2018"
 output: html_document
@@ -9,8 +9,8 @@ knitr::opts_chunk$set(echo = TRUE)
 # initialize the environment
 rm(list=ls()) 
 # load the libraries and data
-#setwd("~/Documents/GitHub/SL-Fall-2018-Final-Project") #Bilwa
-setwd("C:/Users/Owner/Desktop/Data Science/Stat Learning/Datasets/Stat-Learning-2018-Fall-master/Classification_Final_Data/Absenteeism_at_work_AAA") #Mitch
+setwd("~/Documents/GitHub/SL-Fall-2018-Final-Project") #Bilwa
+#setwd("C:/Users/Owner/Desktop/Data Science/Stat Learning/Datasets/Stat-Learning-2018-Fall-master/Classification_Final_Data/Absenteeism_at_work_AAA") #Mitch
 library(tools)
 library(tidyverse)
 library(ggplot2)
@@ -28,7 +28,7 @@ library(caret)
 library(mlbench)
 library(stats)
 library(locfit)
-library(dmm)
+#library(dmm)
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(caret, knitr, dplyr, kableExtra, rpart, rpart.plot,
                MASS, tree, ggplot2, randomForest, obliqueRF,partykit)
@@ -39,7 +39,7 @@ options(warn=-1)
  
 #1 - Download the data
 ```{r}
-absentee <- read.csv("C:/Users/Owner/Desktop/Data Science/Stat Learning/Datasets/Stat-Learning-2018-Fall-master/Classification_Final_Data/Absenteeism_at_work_AAA/Absenteeism_at_work.csv", sep = ';')
+absentee <- read.csv("Absenteeism_at_work.csv", sep = ';')
 glimpse(absentee)
 ```
   
@@ -225,12 +225,10 @@ absentee %>%
 ggplot(aes( Absenteeism.time.in.hours, Distance.from.Residence.to.Work)) + geom_col()
 ```
 
-
-
-
 ```{r}
 ggplot(absentee, aes(as.factor(absentee$Hit.target), Absenteeism.time.in.hours)) + geom_boxplot()
 ```
+
 ```{r}
 ggplot(absentee, aes(absentee$Age, absentee$Absenteeism.time.in.hours)) + geom_point()
 ```
@@ -244,6 +242,7 @@ ggplot(absentee, aes(absentee$Month.of.absence, absentee$Absenteeism.time.in.hou
 table(absentee$Disciplinary.failure)
 # pretty sparse - get rid of it
 ```
+
 ```{r}
 # explore sparseness
 table(absentee$Social.smoker)
@@ -256,6 +255,113 @@ absentee.sparse <- absentee %>%
 ```
 
 ### Run regular trees, boosted trees, bagged trees, random forest, weighted random forest, and balanced random forest
+
+### Original Models (Before optimizing)
+```{r}
+absentee.work <- absentee %>%
+  mutate(Absenteeism.time.in.hours = as.factor(ifelse(absentee$Absenteeism.time.in.hours < 16, "D","W")))
+# training test split
+
+  id = holdout(absentee.work$Absenteeism.time.in.hours,
+               ratio=.6,
+               mode='stratified')
+  
+  absentee.tr = absentee.work[id$tr,]
+  absentee.te = absentee.work[id$ts,]
+  R <- 50
+  error_matrix = matrix(0, ncol=4, nrow=R)
+  sensitivity_matrix = matrix(0, ncol=4, nrow=R)
+  specificity_matrix =  matrix(0, ncol=4, nrow=R)
+  
+for (r in 1:R) {
+  # a. Run regular trees
+  tree_mod = rpart(Absenteeism.time.in.hours ~ ., data = absentee.tr)      
+  
+  # c. Run Random Forest (100 trees)  
+  rf_reg = randomForest(Absenteeism.time.in.hours ~ ., 
+                        absentee.tr, 
+                        ntree = 100,
+                        metric = "ROC",
+                        tuneGrid = tunegrid)
+
+  # g. Run LDA
+  lda_absent = lda(absentee.tr[,-21], absentee.tr[,21])
+  
+  # h. Run QDA - need to exclude Disciplinary.failure and scoial.smoker variable since they are likely to have zero variance in training sets. Errors occurred on two different runs at various Reps with a "rank deficiency" alert.
+  qda_absent = qda(absentee.tr[,-c(12,16,21)], as.numeric(absentee.tr[,21])-1)
+  
+  
+  ##Predict
+  yhat_tree = predict(tree_mod, absentee.te[,-21], type = 'class')
+  yhat_rf = predict(rf_reg, absentee.te[,-21])
+  yhat_lda = predict(lda_absent, absentee.te[,-21])$class
+  yhat_qda = predict(qda_absent, absentee.te[,-c(12,16,21)])$class
+  
+  # store the errors in the matrix
+  error_matrix[r,1] = mean(yhat_tree!=absentee.te[,21])
+  error_matrix[r,2] = mean(yhat_rf!=absentee.te[,21])
+  error_matrix[r,3] = mean(yhat_lda!=absentee.te[,21])
+  error_matrix[r,4] = mean(as.numeric(yhat_qda)!=as.numeric(absentee.te[,21]))
+  
+  cf <- confusionMatrix(yhat_tree,absentee.te[,21])
+  sensitivity_matrix[r,1] = cf$byClass[1]
+  specificity_matrix[r,1] = cf$byClass[2]
+  
+  cf <- confusionMatrix(yhat_rf,absentee.te[,21])
+  sensitivity_matrix[r,2] = cf$byClass[1]
+  specificity_matrix[r,2] = cf$byClass[2]
+
+  cf <- confusionMatrix(yhat_lda, absentee.te[,21])
+  sensitivity_matrix[r,3] = cf$byClass[1]
+  specificity_matrix[r,3] = cf$byClass[2]
+  
+  cf <- confusionMatrix(as.factor(as.numeric(yhat_qda)),as.factor(as.numeric(absentee.te[,21])))
+  sensitivity_matrix[r,4] = cf$byClass[1]
+  specificity_matrix[r,4] = cf$byClass[2]
+}
+```
+
+```{r}
+# Label the columns
+colnames(error_matrix) = c('Trees', 'RF', 'LDA','QDA')
+#melt the matrix
+error_matrix_melt = melt(as.data.frame(error_matrix))
+#rename the columns
+colnames(error_matrix_melt) = c('Method','Accuracy')
+#boxplot of the errors
+ggplot(error_matrix_melt,mapping=aes(x=Method,y=Accuracy))+
+            geom_boxplot()
+```
+
+
+
+```{r}
+# Label the columns
+colnames(sensitivity_matrix) = c('Trees', 'RF', 'LDA','QDA')
+#melt the matrix
+sensitivity_matrix_melt = melt(as.data.frame(sensitivity_matrix))
+#rename the columns
+colnames(sensitivity_matrix_melt) = c('Method','Sensitivity')
+#boxplot of the errors
+ggplot(sensitivity_matrix_melt,mapping=aes(x=Method,y=Sensitivity))+
+            geom_boxplot()
+```
+
+
+```{r}
+# Label the columns
+colnames(specificity_matrix) = c('Trees',  'RF', 'LDA','QDA')
+#melt the matrix
+specificity_matrix_melt = melt(as.data.frame(specificity_matrix))
+#rename the columns
+colnames(specificity_matrix_melt) = c('Method','Specificity')
+#boxplot of the errors
+ggplot(specificity_matrix_melt,mapping=aes(x=Method,y=Specificity))+
+            geom_boxplot()
+```
+
+###Optimization
+
 ```{r}
 # convert Absenteeism.time.in.hours into a factor
 absentee.work <- absentee %>%
