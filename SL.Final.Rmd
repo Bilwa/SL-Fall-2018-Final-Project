@@ -636,7 +636,7 @@ for (r in 1:R) {
 }
 ```
   
-## 2. Generate comparative boxplots showing the test errors (total of 6 boxplots).  
+## 2. Generate comparative boxplots showing the test error metrics (total of 10 boxplots).  
 ```{r}
 # Label the columns
 colnames(error_matrix) = c('Trees', 'Bagged-Trees', 'RF', 'Weighted_RF1', 'Weighted_RF2', 'Balanced_RF','LDA','QDA','SVM-Nu','SVM-C')
