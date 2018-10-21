@@ -1,0 +1,532 @@
+---
+title: "IDS Final Project"
+author: "Bilwa Wagh, Gina O'Riordan, Mitchell Speer, Sharif Nijim"
+date: "09/17/2018"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# initialize the environment
+rm(list=ls()) 
+# load the libraries and data
+#setwd("~/Documents/GitHub/SL-Fall-2018-Final-Project") #Bilwa
+setwd("C:/Users/Owner/Desktop/Data Science/Stat Learning/Datasets/Stat-Learning-2018-Fall-master/Classification_Final_Data/Absenteeism_at_work_AAA") #Mitch
+library(tools)
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+#library(mosaic)
+library(rpart)
+library(rpart.plot)
+library(partykit)
+#library(NHANES)
+library(randomForest)
+library(class)
+library(tidyverse)
+library(reshape2)
+library(caret)
+library(mlbench)
+library(stats)
+library(locfit)
+library(dmm)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(caret, knitr, dplyr, kableExtra, rpart, rpart.plot,
+               MASS, tree, ggplot2, randomForest, obliqueRF,partykit)
+pacman::p_load(mlbench, caret, knitr, LogicReg, dplyr, rminer, ROCR, pROC)
+options(warn=-1)
+#library(neuralnet)
+```
+ 
+#1 - Download the data
+```{r}
+absentee <- read.csv("C:/Users/Owner/Desktop/Data Science/Stat Learning/Datasets/Stat-Learning-2018-Fall-master/Classification_Final_Data/Absenteeism_at_work_AAA/Absenteeism_at_work.csv", sep = ';')
+glimpse(absentee)
+```
+  
+#2 - Basic exploratory data analysis
+```{r}
+# check for missing data
+sum(is.na(absentee))
+```
+## Explore Reason for Absence
+```{r}
+# Explore Reason for Absence
+table(absentee$Reason.for.absence)
+```
+  
+B- 43 missing values with reason = 0  
+  
+```{r}
+# Explore Reason for Absence
+hist(absentee$Reason.for.absence)
+```
+```{r}
+# Explore Month of absence
+table(absentee$Month.of.absence)
+```
+  
+B- 43 missing values with month = 0  
+  
+```{r}
+# Explore Reason for Absence
+hist(absentee$Month.of.absence)
+```
+```{r}
+# Explore Day of the week
+table(absentee$Day.of.the.week)
+```
+```{r}
+# Explore Day of the week
+hist(absentee$Day.of.the.week)
+```
+```{r}
+# Explore seasons
+table(absentee$Seasons)
+```
+```{r}
+# Explore seasons
+hist(absentee$Seasons)
+```
+```{r}
+# Explore Transportation expense
+table(absentee$Transportation.expense)
+```
+```{r}
+# Explore Transportation expense
+hist(absentee$Transportation.expense)
+```
+```{r}
+# Explore Distance from residence
+table(absentee$Distance.from.Residence.to.Work)
+```
+```{r}
+# Explore Distance from residence
+hist(absentee$Distance.from.Residence.to.Work)
+```
+```{r}
+# Explore Service time
+table(absentee$Service.time)
+```
+```{r}
+# Explore Service time
+hist(absentee$Service.time)
+```
+```{r}
+# Explore Age
+table(absentee$Age)
+```
+```{r}
+# Explore Reason for Absence
+hist(absentee$Age)
+```
+```{r}
+# Explore work load average
+table(absentee$Work.load.Average.day)
+```
+```{r}
+# Explore work load average
+hist(absentee$Work.load.Average.day)
+```
+```{r}
+# Explore hit target
+table(absentee$Hit.target)
+```
+```{r}
+# Explore hit target
+hist(absentee$Hit.target)
+```
+```{r}
+# Explore disciplinary failure
+table(absentee$Disciplinary.failure)
+```
+```{r}
+# Explore disciplinary failure
+hist(absentee$Disciplinary.failure)
+```
+```{r}
+# Explore Education
+table(absentee$Education)
+```
+```{r}
+# Explore Education
+hist(absentee$Education)
+```
+```{r}
+# Explore number of children
+table(absentee$Son)
+```
+```{r}
+# Explore number of children
+hist(absentee$Son)
+```
+```{r}
+# Explore social drinker
+table(absentee$Social.drinker)
+```
+```{r}
+# Explore social drinker
+hist(absentee$Social.drinker)
+```
+```{r}
+# Explore social smoker
+table(absentee$Social.smoker)
+```
+```{r}
+# Explore social smoker
+hist(absentee$Social.smoker)
+```
+```{r}
+# Explore pet ownership
+table(absentee$Pet)
+```
+```{r}
+# Explore pet ownership
+hist(absentee$Pet)
+```
+```{r}
+# Explore weight
+table(absentee$Weight)
+```
+```{r}
+# Explore weight
+hist(absentee$Weight)
+```
+```{r}
+# Explore height
+table(absentee$Height)
+```
+```{r}
+# Explore height
+hist(absentee$Height)
+```
+```{r}
+# Explore BMI
+table(absentee$Body.mass.index)
+```
+```{r}
+# Explore BMI
+hist(absentee$Body.mass.index)
+```
+```{r}
+# Explore Absenteeism time in hours
+table(absentee$Absenteeism.time.in.hours)
+```
+```{r}
+# Explore Absenteeism time in hours
+hist(absentee$Absenteeism.time.in.hours)
+```
+```{r}
+ggplot(absentee, aes(as.factor(Reason.for.absence), Absenteeism.time.in.hours, color = as.factor(Month.of.absence))) + geom_point()
+```
+
+```{r}
+absentee %>%
+  filter(Absenteeism.time.in.hours <= 40) %>%
+ggplot(aes( Absenteeism.time.in.hours, Distance.from.Residence.to.Work)) + geom_col()
+```
+
+
+
+
+```{r}
+ggplot(absentee, aes(as.factor(absentee$Hit.target), Absenteeism.time.in.hours)) + geom_boxplot()
+```
+```{r}
+ggplot(absentee, aes(absentee$Age, absentee$Absenteeism.time.in.hours)) + geom_point()
+```
+
+```{r}
+ggplot(absentee, aes(absentee$Month.of.absence, absentee$Absenteeism.time.in.hours, fill = as.factor(absentee$Day.of.the.week))) + geom_col()
+```
+
+```{r}
+# explore sparseness
+table(absentee$Disciplinary.failure)
+# pretty sparse - get rid of it
+```
+```{r}
+# explore sparseness
+table(absentee$Social.smoker)
+# pretty sparse - get rid of it
+```
+```{r}
+# create a new dataset without Disciplinary Failure and Social Smoker
+absentee.sparse <- absentee %>%
+  dplyr::select(-Disciplinary.failure, -Social.smoker)
+```
+
+### Run regular trees, boosted trees, bagged trees, random forest, weighted random forest, and balanced random forest
+
+### Original Models (Before optimizing)
+```{r}
+absentee.work <- absentee %>%
+  mutate(Absenteeism.time.in.hours = as.factor(ifelse(absentee$Absenteeism.time.in.hours < 16, "D","W")))
+# training test split
+
+  id = holdout(absentee.work$Absenteeism.time.in.hours,
+               ratio=.6,
+               mode='stratified')
+  
+  absentee.tr = absentee.work[id$tr,]
+  absentee.te = absentee.work[id$ts,]
+  R <- 50
+  error_matrix = matrix(0, ncol=6, nrow=R)
+  sensitivity_matrix = matrix(0, ncol=6, nrow=R)
+  specificity_matrix =  matrix(0, ncol=6, nrow=R)
+  
+for (r in 1:R) {
+  # a. Run regular trees
+  tree_mod = rpart(Absenteeism.time.in.hours ~ ., data = absentee.tr)      
+  
+######
+  # c. Run Random Forest (100 trees)  
+  rf_reg = randomForest(Absenteeism.time.in.hours ~ ., 
+                        absentee.tr, 
+                        ntree = 100,
+                        metric = "ROC",
+                        tuneGrid = tunegrid)
+######
+  # g. Run LDA
+  lda_absent = lda(absentee.tr[,-21], absentee.tr[,21])
+  
+  # h. Run QDA - need to exclude Disciplinary.failure and scoial.smoker variable since they are likely to have zero variance in training sets. Errors occurred on two different runs at various Reps with a "rank deficiency" alert.
+  qda_absent = qda(absentee.tr[,-c(12,16,21)], as.numeric(absentee.tr[,21])-1)
+  
+  # i. SVM (C)
+  svmC_ab = svm(absentee.tr[,-21], absentee.tr[,21],cross=5,C=0.5,
+                               type="C-classification")
+  
+  # j. SVM (Nu)
+  svmNu_ab = svm(absentee.tr$Absenteeism.time.in.hours~., data=absentee.tr, cross=5, nu=0.1, 
+                               type='nu-classification')
+  
+  
+  ##Predict
+  yhat_tree = predict(tree_mod, absentee.te[,-21], type = 'class')
+  yhat_rf = predict(rf_reg, absentee.te[,-21])
+  yhat_lda = predict(lda_absent, absentee.te[,-21])$class
+  yhat_qda = predict(qda_absent, absentee.te[,-c(12,16,21)])$class
+  yhat_svmC = predict(svmC_ab, absentee.te[,-21])
+  yhat_svmNu = predict(svmNu_ab, absentee.te[,-21])
+  
+  # store the errors in the matrix
+  error_matrix[r,1] = mean(yhat_tree!=absentee.te[,21])
+  error_matrix[r,2] = mean(yhat_rf!=absentee.te[,21])
+  error_matrix[r,3] = mean(yhat_lda!=absentee.te[,21])
+  error_matrix[r,4] = mean(as.numeric(yhat_qda)!=as.numeric(absentee.te[,21]))
+  error_matrix[r,5] = mean(yhat_svmC!=absentee.te[,21])
+  error_matrix[r,6] = mean(yhat_svmNu!=absentee.te[,21])
+  
+  cf <- confusionMatrix(yhat_tree,absentee.te[,21])
+  sensitivity_matrix[r,1] = cf$byClass[1]
+  specificity_matrix[r,1] = cf$byClass[2]
+  
+  cf <- confusionMatrix(yhat_rf,absentee.te[,21])
+  sensitivity_matrix[r,2] = cf$byClass[1]
+  specificity_matrix[r,2] = cf$byClass[2]
+
+  cf <- confusionMatrix(yhat_lda, absentee.te[,21])
+  sensitivity_matrix[r,3] = cf$byClass[1]
+  specificity_matrix[r,3] = cf$byClass[2]
+  
+  cf <- confusionMatrix(as.factor(as.numeric(yhat_qda)),as.factor(as.numeric(absentee.te[,21])))
+  sensitivity_matrix[r,4] = cf$byClass[1]
+  specificity_matrix[r,4] = cf$byClass[2]
+  
+  cf <- confusionMatrix(yhat_svmC, absentee.te[,21])
+  sensitivity_matrix[r,5] = cf$byClass[1]
+  specificity_matrix[r,5] = cf$byClass[2]
+
+  cf <- confusionMatrix(yhat_svmNu, absentee.te[,21])
+  sensitivity_matrix[r,6] = cf$byClass[1]
+  specificity_matrix[r,6] = cf$byClass[2]
+}
+```
+
+```{r}
+# Label the columns
+colnames(error_matrix) = c('Trees', 'RF', 'LDA','QDA','SVM-Nu','SVM-C')
+#melt the matrix
+error_matrix_melt = melt(as.data.frame(error_matrix))
+#rename the columns
+colnames(error_matrix_melt) = c('Method','Accuracy')
+#boxplot of the errors
+ggplot(error_matrix_melt,mapping=aes(x=Method,y=Accuracy))+
+            geom_boxplot()
+```
+
+```{r}
+# Label the columns
+colnames(sensitivity_matrix) = c('Trees', 'RF', 'LDA','QDA','SVM-Nu','SVM-C')
+#melt the matrix
+sensitivity_matrix_melt = melt(as.data.frame(sensitivity_matrix))
+#rename the columns
+colnames(sensitivity_matrix_melt) = c('Method','Sensitivity')
+#boxplot of the errors
+ggplot(sensitivity_matrix_melt,mapping=aes(x=Method,y=Sensitivity))+
+            geom_boxplot()
+```
+
+
+```{r}
+# Label the columns
+colnames(specificity_matrix) = c('Trees',  'RF', 'LDA','QDA','SVM-Nu','SVM-C')
+#melt the matrix
+specificity_matrix_melt = melt(as.data.frame(specificity_matrix))
+#rename the columns
+colnames(specificity_matrix_melt) = c('Method','Specificity')
+#boxplot of the errors
+ggplot(specificity_matrix_melt,mapping=aes(x=Method,y=Specificity))+
+            geom_boxplot()
+```
+  
+### Run Replications for optimized SVM methods
+```{r}
+#50 replications and a 60%-training/40%-test data split to compute the average test error
+set.seed(1842)
+R = 50 # set the number of replications
+# create the error matrix to store values
+error_matrix = matrix(0, ncol=2, nrow=R)
+sensitivity_matrix = matrix(0, ncol=2, nrow=R)
+specificity_matrix =  matrix(0, ncol=2, nrow=R)
+
+for (r in 1:R) {
+  
+  # training test split
+  id = holdout(absentee.work$Absenteeism.time.in.hours,
+               ratio=.6,
+               mode='stratified')
+  
+  absentee.tr = absentee.work[id$tr,]
+  absentee.te = absentee.work[id$ts,]
+  
+  # a. SVM (C)
+    
+    # Number of C to observe   
+    n.C = 20 
+
+        #  Create a sequence to try out 27 values between 0 and 1 
+        # note: 0 and 1 are not valid values to try   
+        v.C = seq(0.01,.99, length=n.C)
+        cv.for.C = numeric(n.C)
+      
+        for(j in 1:n.C) {
+          
+            # training test split (60-40 tr/te split)
+             id = holdout(absentee.tr$Absenteeism.time.in.hours,
+               ratio=.6,
+               mode='stratified')
+  
+             ab.tr = absentee.tr[id$tr,]
+             ab.te = absentee.tr[id$ts,]
+           
+            # loop through each value of C to try
+            C.svm.ab = svm(Absenteeism.time.in.hours~., data=ab.tr, cross=5, C=v.C[j], 
+                               type='C-classification') 
+         
+            # get the cross validation error for each C value 
+            yhat_svm = predict(C.svm.ab, ab.te[,-21])
+            cv.for.C[j] <- mean(yhat_svm != ab.te[,21]) 
+        }    
+        
+        # find the optimal C value
+        v.opt.C = v.C[min(which(cv.for.C==min(cv.for.C)))]
+        
+  svmC_ab = svm(absentee.tr[,-21], absentee.tr[,21],cross=5,C=v.opt.C,
+                               type="C-classification")
+  
+  # b. SVM (Nu)
+    
+    # Number of nu to observe   
+    n.nu = 20 
+
+        #  Create a sequence to try out 27 values between 0 and 1 
+        # note: 0 and 1 are not valid values to try   
+        v.nu = seq(0.01,.1, length=n.nu)
+        cv.for.nu = numeric(n.nu)
+      
+        for(j in 1:n.nu) {
+          
+            # training test split (60-40 tr/te split)
+             id = holdout(absentee.tr$Absenteeism.time.in.hours,
+               ratio=.6,
+               mode='stratified')
+  
+             ab.tr = absentee.tr[id$tr,]
+             ab.te = absentee.tr[id$ts,]
+           
+            # loop through each value of nu to try
+            nu.svm.ab = svm(Absenteeism.time.in.hours~., data=ab.tr, cross=5, nu=v.nu[j], 
+                               type='nu-classification') 
+         
+            # get the cross validation error for each nu value 
+            yhat_svm = predict(nu.svm.ab, ab.te[,-21])
+            cv.for.nu[j] <- mean(yhat_svm != ab.te[,21]) 
+        }    
+        
+        # find the optimal nu value
+        v.opt.nu = v.nu[min(which(cv.for.nu==min(cv.for.nu)))]
+        
+  svmNu_ab = svm(absentee.tr$Absenteeism.time.in.hours~., data=absentee.tr, cross=5, nu=v.opt.nu, 
+                               type='nu-classification')
+  
+  # prediction    
+  yhat_svmC = predict(svmC_ab, absentee.te[,-21])
+  yhat_svmNu = predict(svmNu_ab, absentee.te[,-21])
+  
+  # store the errors in the matrix
+  error_matrix[r,1] = mean(yhat_svmC!=absentee.te[,21])
+  error_matrix[r,2] = mean(yhat_svmNu!=absentee.te[,21])
+  
+  cf <- confusionMatrix(yhat_svmC, absentee.te[,21])
+  sensitivity_matrix[r,1] = cf$byClass[1]
+  specificity_matrix[r,1] = cf$byClass[2]
+
+  cf <- confusionMatrix(yhat_svmNu, absentee.te[,21])
+  sensitivity_matrix[r,2] = cf$byClass[1]
+  specificity_matrix[r,2] = cf$byClass[2]
+
+  # just a nice statement to tell you when each loop is done
+  cat("Finished Rep",r," and Nu: ",v.opt.nu," and C: ",v.opt.C, "\n")
+}
+```
+  
+## 2. Generate comparative boxplots showing the test error metrics (total of 10 boxplots).  
+```{r}
+# Label the columns
+colnames(error_matrix) = c('SVM-Nu','SVM-C')
+#melt the matrix
+error_matrix_melt = melt(as.data.frame(error_matrix))
+#rename the columns
+colnames(error_matrix_melt) = c('Method','Accuracy')
+#boxplot of the errors
+ggplot(error_matrix_melt,mapping=aes(x=Method,y=Accuracy))+
+            geom_boxplot()
+```
+
+
+
+```{r}
+# Label the columns
+colnames(sensitivity_matrix) = c('SVM-Nu','SVM-C')
+#melt the matrix
+sensitivity_matrix_melt = melt(as.data.frame(sensitivity_matrix))
+#rename the columns
+colnames(sensitivity_matrix_melt) = c('Method','Sensitivity')
+#boxplot of the errors
+ggplot(sensitivity_matrix_melt,mapping=aes(x=Method,y=Sensitivity))+
+            geom_boxplot()
+```
+
+
+```{r}
+# Label the columns
+colnames(specificity_matrix) = c('SVM-Nu','SVM-C')
+#melt the matrix
+specificity_matrix_melt = melt(as.data.frame(specificity_matrix))
+#rename the columns
+colnames(specificity_matrix_melt) = c('Method','Specificity')
+#boxplot of the errors
+ggplot(specificity_matrix_melt,mapping=aes(x=Method,y=Specificity))+
+            geom_boxplot()
+```
