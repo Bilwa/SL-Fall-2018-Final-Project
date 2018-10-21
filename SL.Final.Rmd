@@ -530,6 +530,16 @@ for (r in 1:R) {
                               classwt=c(.01,1),
                               tuneGrid = tunegrid)
   
+    # d. Run Weighted Random Forest (100 trees)  
+  rf.weighted2 = randomForest(Absenteeism.time.in.hours ~ ., 
+                              absentee.tr, 
+                              #method='rf',
+                              ntree = 100,
+                              trControl = fitControl,
+                              metric = "ROC",
+                              classwt=c(1,.01),
+                              tuneGrid = tunegrid)
+  
   
   # f. Run Balanced Random Forest (100 trees)  
   #nmin = sum(absentee.tr$Class=='bad') # minority class is bad
