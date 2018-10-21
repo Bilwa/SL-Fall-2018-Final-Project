@@ -278,13 +278,14 @@ for (r in 1:R) {
   # a. Run regular trees
   tree_mod = rpart(Absenteeism.time.in.hours ~ ., data = absentee.tr)      
   
+######
   # c. Run Random Forest (100 trees)  
   rf_reg = randomForest(Absenteeism.time.in.hours ~ ., 
                         absentee.tr, 
                         ntree = 100,
                         metric = "ROC",
                         tuneGrid = tunegrid)
-
+######
   # g. Run LDA
   lda_absent = lda(absentee.tr[,-21], absentee.tr[,21])
   
@@ -381,7 +382,7 @@ ggplot(specificity_matrix_melt,mapping=aes(x=Method,y=Specificity))+
 
 
 ###Optimizing SVM Nu and C Values
-```{r}
+```{r,eval=F}
  # i.
   #Cross Validating and choosing minimal Nu/C values
 # Number of nu to observe   
@@ -422,7 +423,7 @@ n.nu = 20
         abline(h=min(cv.for.nu),col='red')
 ```
 
-```{r}
+```{r, eval=F}
 # Number of C to observe   
 n.C = 20 
 
@@ -509,9 +510,11 @@ for (r in 1:R) {
                   preProc = c("center", "scale"),
                   nbagg = 7)
   
+ ###########
   # c. Run Random Forest (100 trees)  
   rf_reg = randomForest(Absenteeism.time.in.hours ~ ., 
                         absentee.tr, 
+                       #method='rf',
                         ntree = 100,
                         trControl = fitControl,
                         metric = "ROC",
@@ -520,31 +523,25 @@ for (r in 1:R) {
   # d. Run Weighted Random Forest (100 trees)  
   rf.weighted1 = randomForest(Absenteeism.time.in.hours ~ ., 
                               absentee.tr, 
+                              #method='rf',
                               ntree = 100,
                               trControl = fitControl,
                               metric = "ROC",
                               classwt=c(.01,1),
                               tuneGrid = tunegrid)
   
-  # e. Run Weighted Random Forest (100 trees)  
-  rf.weighted2 = randomForest(Absenteeism.time.in.hours ~ ., 
-                              absentee.tr, 
-                              ntree = 100,
-                              trControl = fitControl,
-                              metric = "ROC",
-                              classwt=c(1,.01),
-                              tuneGrid = tunegrid)
-  
   
   # f. Run Balanced Random Forest (100 trees)  
   #nmin = sum(absentee.tr$Class=='bad') # minority class is bad
   rf_balanced_under = randomForest(Absenteeism.time.in.hours ~ ., 
-                                   absentee.tr, 
+                                   absentee.tr,
+                                  # method='rf',
                                    ntree = 100,
                                    sample_size = rep(nmin, 2),
                                    trControl = fitControl,
                                    metric = "ROC",
                                    tuneGrid = tunegrid)
+ ###########
   
   # g. Run LDA
   lda_absent = lda(absentee.tr[,-21], absentee.tr[,21])
@@ -554,10 +551,72 @@ for (r in 1:R) {
   
   
   # i. SVM (C)
+    
+    # Number of C to observe   
+    n.C = 20 
+
+        #  Create a sequence to try out 27 values between 0 and 1 
+        # note: 0 and 1 are not valid values to try   
+        v.C = seq(0.01,.99, length=n.C)
+        cv.for.C = numeric(n.C)
+      
+        for(j in 1:n.C) {
+          
+            # training test split (60-40 tr/te split)
+             id = holdout(absentee.tr$Absenteeism.time.in.hours,
+               ratio=.6,
+               mode='stratified')
+  
+             ab.tr = absentee.tr[id$tr,]
+             ab.te = absentee.tr[id$ts,]
+           
+            # loop through each value of C to try
+            C.svm.ab = svm(Absenteeism.time.in.hours~., data=ab.tr, cross=5, C=v.C[j], 
+                               type='C-classification') 
+         
+            # get the cross validation error for each C value 
+            yhat_svm = predict(C.svm.ab, ab.te[,-21])
+            cv.for.C[j] <- mean(yhat_svm != ab.te[,21]) 
+        }    
+        
+        # find the optimal C value
+        v.opt.C = v.C[min(which(cv.for.C==min(cv.for.C)))]
+        
   svmC_ab = svm(absentee.tr[,-21], absentee.tr[,21],cross=5,C=v.opt.C,
                                type="C-classification")
   
   # j. SVM (Nu)
+    
+    # Number of nu to observe   
+    n.nu = 20 
+
+        #  Create a sequence to try out 27 values between 0 and 1 
+        # note: 0 and 1 are not valid values to try   
+        v.nu = seq(0.01,.1, length=n.nu)
+        cv.for.nu = numeric(n.nu)
+      
+        for(j in 1:n.nu) {
+          
+            # training test split (60-40 tr/te split)
+             id = holdout(absentee.tr$Absenteeism.time.in.hours,
+               ratio=.6,
+               mode='stratified')
+  
+             ab.tr = absentee.tr[id$tr,]
+             ab.te = absentee.tr[id$ts,]
+           
+            # loop through each value of nu to try
+            nu.svm.ab = svm(Absenteeism.time.in.hours~., data=ab.tr, cross=5, nu=v.nu[j], 
+                               type='nu-classification') 
+         
+            # get the cross validation error for each nu value 
+            yhat_svm = predict(nu.svm.ab, ab.te[,-21])
+            cv.for.nu[j] <- mean(yhat_svm != ab.te[,21]) 
+        }    
+        
+        # find the optimal nu value
+        v.opt.nu = v.nu[min(which(cv.for.nu==min(cv.for.nu)))]
+        
   svmNu_ab = svm(absentee.tr$Absenteeism.time.in.hours~., data=absentee.tr, cross=5, nu=v.opt.nu, 
                                type='nu-classification')
   
@@ -632,7 +691,7 @@ for (r in 1:R) {
   specificity_matrix[r,10] = cf$byClass[2]
 
   # just a nice statement to tell you when each loop is done
-  cat("Finished Rep",r, "\n")
+  cat("Finished Rep",r," and Nu: ",v.opt.nu," and C: ",v.opt.C, "\n")
 }
 ```
   
