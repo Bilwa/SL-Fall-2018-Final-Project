@@ -9,9 +9,9 @@ knitr::opts_chunk$set(echo = TRUE)
 # initialize the environment
 rm(list=ls()) 
 # load the libraries and data
-#setwd("~/Documents/GitHub/SL-Fall-2018-Final-Project") #Bilwa
+setwd("~/Documents/GitHub/SL-Fall-2018-Final-Project") #Bilwa
 #setwd("C:/Users/Owner/Desktop/Data Science/Stat Learning/Datasets/Stat-Learning-2018-Fall-master/Classification_Final_Data/Absenteeism_at_work_AAA") #Mitch
-setwd("/Volumes/GoogleDrive/My Drive/MSDS/04.SL/SL.Team.Project") # Sharif
+#setwd("/Volumes/GoogleDrive/My Drive/MSDS/04.SL/SL.Team.Project") # Sharif
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(tools, caret, knitr, tidyverse, kableExtra, rpart, rpart.plot, corrplot,
                MASS, tree, randomForest, obliqueRF, partykit, rminer, ROCR, pROC,
@@ -360,12 +360,12 @@ for (r in 1:R) {
   yhat_svmNu <- predict(svmNu_ab, absentee.te[,-16])
   
   # store the errors in the matrix
-  error_matrix[r,1] <- mean(yhat_tree!=absentee.te[,16])
-  error_matrix[r,2] <- mean(yhat_rf!=absentee.te[,16])
-  error_matrix[r,3] <- mean(yhat_lda!=absentee.te[,16])
-  error_matrix[r,4] <- mean(as.numeric(yhat_qda)!=as.numeric(absentee.te[,16]))
-  error_matrix[r,5] <- mean(yhat_svmC!=absentee.te[,16])
-  error_matrix[r,6] <- mean(yhat_svmNu!=absentee.te[,16])
+  error_matrix[r,1] <- 1-mean(yhat_tree!=absentee.te[,16])
+  error_matrix[r,2] <- 1-mean(yhat_rf!=absentee.te[,16])
+  error_matrix[r,3] <- 1-mean(yhat_lda!=absentee.te[,16])
+  error_matrix[r,4] <- 1-mean(as.numeric(yhat_qda)!=as.numeric(absentee.te[,16]))
+  error_matrix[r,5] <- 1-mean(yhat_svmC!=absentee.te[,16])
+  error_matrix[r,6] <- 1-mean(yhat_svmNu!=absentee.te[,16])
   
   cf <- confusionMatrix(yhat_tree,absentee.te[,16])
   sensitivity_matrix[r,1] <- cf$byClass[1]
@@ -557,8 +557,8 @@ for (r in 1:R) {
   yhat_svmNu <- predict(svmNu_ab, absentee.te[,-16])
   
   # store the errors in the matrix
-  error_matrix[r,1] <- mean(yhat_svmC!=absentee.te[,16])
-  error_matrix[r,2] <- mean(yhat_svmNu!=absentee.te[,16])
+  error_matrix[r,1] <- 1-mean(yhat_svmC!=absentee.te[,16])
+  error_matrix[r,2] <- 1-mean(yhat_svmNu!=absentee.te[,16])
   
   cf <- confusionMatrix(yhat_svmC, absentee.te[,16])
   sensitivity_matrix[r,1] <- cf$byClass[1]
@@ -573,7 +573,6 @@ for (r in 1:R) {
 }
 ```
   
-## 2. Generate comparative boxplots showing the test error metrics (total of 10 boxplots).  
 ```{r}
 # Label the columns
 colnames(error_matrix) <- c('SVM-Nu','SVM-C')
