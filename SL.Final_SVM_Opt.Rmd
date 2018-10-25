@@ -9,8 +9,8 @@ knitr::opts_chunk$set(echo = TRUE)
 # initialize the environment
 rm(list=ls()) 
 # load the libraries and data
-setwd("~/Documents/GitHub/SL-Fall-2018-Final-Project") #Bilwa
-#setwd("C:/Users/Owner/Desktop/Data Science/Stat Learning/Datasets/Stat-Learning-2018-Fall-master/Classification_Final_Data/Absenteeism_at_work_AAA") #Mitch
+#setwd("~/Documents/GitHub/SL-Fall-2018-Final-Project") #Bilwa
+setwd("C:/Users/Owner/Desktop/Data Science/Stat Learning/Datasets/Stat-Learning-2018-Fall-master/Classification_Final_Data/Absenteeism_at_work_AAA") #Mitch
 #setwd("/Volumes/GoogleDrive/My Drive/MSDS/04.SL/SL.Team.Project") # Sharif
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(tools, caret, knitr, tidyverse, kableExtra, rpart, rpart.plot, corrplot,
@@ -24,7 +24,7 @@ options(warn=-1)
 ```{r}
 #absentee <- read.csv("C:/Users/Owner/Desktop/Data Science/Stat Learning/Datasets/Stat-Learning-2018-Fall-master/Classification_Final_Data/Absenteeism_at_work_AAA/Absenteeism_at_work.csv", sep = ';')
 # The Absenteeism dataset is a semi-colon separated CSV
-absentee <- read.csv("./Absenteeism_at_work.csv", sep = ';')
+absentee <- read.csv("C:/Users/Owner/Desktop/Data Science/Stat Learning/Datasets/Stat-Learning-2018-Fall-master/Classification_Final_Data/Absenteeism_at_work_AAA/Absenteeism_at_work.csv", sep = ';')
 # Now that we have loaded the data, take a brief look at it
 glimpse(absentee)
 ```
@@ -241,7 +241,7 @@ nearZeroVar(dat)
 ```
 ## Look for correlations in the data
 ```{r}
-corrplot(cor(absentee),  tl.cex = .6)
+corrplot::corrplot(cor(absentee),  tl.cex = .6)
 ```
 Looking at the above plot, there is a high correlation between age and service time.  To refrain from potential discrimination issues, we will exclude age from the analysis.
 
@@ -306,6 +306,7 @@ absentee.work <- absentee.sparse %>%
 In this section, we will explore regular trees, random forest, LDA, QDA, and SVM.
 
 ```{r}
+set.seed(1842)
 # training test split
 id <- holdout(absentee.work$Absenteeism.time.in.hours,
               ratio=.6,
@@ -340,14 +341,14 @@ for (r in 1:R) {
   svmC_ab <- svm(absentee.tr[,-16],
                 absentee.tr[,16],
                 cross=5,
-                C=0.5,
+                C=0.25,
                 type="C-classification")
   
   # f. SVM (Nu)
   svmNu_ab <- svm(absentee.tr$Absenteeism.time.in.hours~.,
                  data=absentee.tr,
                  cross=5,
-                 nu=0.1,
+                 nu=0.15,
                  type='nu-classification')
   
   
@@ -402,8 +403,8 @@ colnames(error_matrix) <- c('Trees',
                            'RF',
                            'LDA',
                            'QDA',
-                           'SVM-Nu',
-                           'SVM-C')
+                           'SVM-C',
+                           'SVM-Nu')
 #melt the matrix
 error_matrix_melt <- melt(as.data.frame(error_matrix))
 #rename the columns
@@ -419,8 +420,8 @@ colnames(sensitivity_matrix) <- c('Trees',
                                  'RF',
                                  'LDA',
                                  'QDA',
-                                 'SVM-Nu',
-                                 'SVM-C')
+                                 'SVM-C',
+                                 'SVM-Nu')
 #melt the matrix
 sensitivity_matrix_melt <- melt(as.data.frame(sensitivity_matrix))
 #rename the columns
@@ -437,8 +438,8 @@ colnames(specificity_matrix) <- c('Trees',
                                  'RF',
                                  'LDA',
                                  'QDA',
-                                 'SVM-Nu',
-                                 'SVM-C')
+                                 'SVM-C',
+                                 'SVM-Nu')
 #melt the matrix
 specificity_matrix_melt <- melt(as.data.frame(specificity_matrix))
 #rename the columns
@@ -475,7 +476,7 @@ for (r in 1:R) {
     # Number of C to observe   
     n.C <- 20 
 
-        #  Create a sequence to try out 27 values between 0 and 1 
+        #  Create a sequence to try out 20 values between 0.01 and 0.99
         # note: 0 and 1 are not valid values to try   
         v.C <- seq(0.01,.99, length=n.C)
         cv.for.C <- numeric(n.C)
@@ -514,9 +515,9 @@ for (r in 1:R) {
   # b. SVM (Nu)
     
     # Number of nu to observe   
-    n.nu <- 20 
+    n.nu <- 30 
 
-        #  Create a sequence to try out 27 values between 0 and 1 
+        #  Create a sequence to try out 30 values between 0.01 and .1 
         # note: 0 and 1 are not valid values to try   
         v.nu <- seq(0.01,.1, length=n.nu)
         cv.for.nu <- numeric(n.nu)
@@ -534,7 +535,7 @@ for (r in 1:R) {
             # loop through each value of nu to try
             nu.svm.ab <- svm(Absenteeism.time.in.hours~.,
                             data=ab.tr,
-                            cross=5,
+                            cross=10,
                             nu=v.nu[j], 
                             type='nu-classification') 
          
@@ -548,7 +549,7 @@ for (r in 1:R) {
         
   svmNu_ab <- svm(absentee.tr$Absenteeism.time.in.hours~.,
                  data=absentee.tr,
-                 cross=5,
+                 cross=10,
                  nu=v.opt.nu, 
                  type='nu-classification')
   
@@ -575,13 +576,13 @@ for (r in 1:R) {
   
 ```{r}
 # Label the columns
-colnames(error_matrix) <- c('SVM-Nu','SVM-C')
+colnames(error_matrix) <- c('SVM-C_OPT','SVM-Nu_OPT')
 #melt the matrix
-error_matrix_melt <- melt(as.data.frame(error_matrix))
+error_matrix_melt_opt <- melt(as.data.frame(error_matrix))
 #rename the columns
-colnames(error_matrix_melt) <- c('Method','Accuracy')
+colnames(error_matrix_melt_opt) <- c('Method','Accuracy')
 #boxplot of the errors
-ggplot(error_matrix_melt,mapping=aes(x=Method,y=Accuracy))+
+ggplot(error_matrix_melt_opt,mapping=aes(x=Method,y=Accuracy))+
             geom_boxplot()
 ```
 
@@ -589,25 +590,57 @@ ggplot(error_matrix_melt,mapping=aes(x=Method,y=Accuracy))+
 
 ```{r}
 # Label the columns
-colnames(sensitivity_matrix) <- c('SVM-Nu','SVM-C')
+colnames(sensitivity_matrix) <- c('SVM-C_OPT','SVM-Nu_OPT')
 #melt the matrix
-sensitivity_matrix_melt <- melt(as.data.frame(sensitivity_matrix))
+sensitivity_matrix_melt_opt <- melt(as.data.frame(sensitivity_matrix))
 #rename the columns
-colnames(sensitivity_matrix_melt) <- c('Method','Sensitivity')
+colnames(sensitivity_matrix_melt_opt) <- c('Method','Sensitivity')
 #boxplot of the errors
-ggplot(sensitivity_matrix_melt,mapping=aes(x=Method,y=Sensitivity))+
+ggplot(sensitivity_matrix_melt_opt,mapping=aes(x=Method,y=Sensitivity))+
             geom_boxplot()
 ```
 
 
 ```{r}
 # Label the columns
-colnames(specificity_matrix) <- c('SVM-Nu','SVM-C')
+colnames(specificity_matrix) <- c('SVM-C_OPT','SVM-Nu_OPT')
 #melt the matrix
-specificity_matrix_melt <- melt(as.data.frame(specificity_matrix))
+specificity_matrix_melt_opt <- melt(as.data.frame(specificity_matrix))
 #rename the columns
-colnames(specificity_matrix_melt) <- c('Method','Specificity')
+colnames(specificity_matrix_melt_opt) <- c('Method','Specificity')
 #boxplot of the errors
-ggplot(specificity_matrix_melt,mapping=aes(x=Method,y=Specificity))+
+ggplot(specificity_matrix_melt_opt,mapping=aes(x=Method,y=Specificity))+
             geom_boxplot()
 ```
+
+##How did the optimized models perform compared to the base models?
+###Accuracy
+```{r}
+acc_init_opt <- rbind(filter(error_matrix_melt,error_matrix_melt$Method=="SVM-Nu"),filter(error_matrix_melt_opt,error_matrix_melt_opt$Method=="SVM-Nu_OPT"))
+
+ggplot(acc_init_opt,mapping=aes(x=Method,y=Accuracy))+
+            geom_boxplot()
+
+error_matrix_melt_opt
+```
+
+###Sensitivity
+```{r}
+sens_init_opt <- rbind(filter(sensitivity_matrix_melt,sensitivity_matrix_melt$Method=="SVM-Nu"),filter(sensitivity_matrix_melt_opt,sensitivity_matrix_melt_opt$Method=="SVM-Nu_OPT"))
+
+ggplot(sens_init_opt,mapping=aes(x=Method,y=Sensitivity))+
+            geom_boxplot()
+
+sensitivity_matrix_melt_opt
+```
+
+###Specificity
+```{r}
+spec_init_opt <- rbind(filter(specificity_matrix_melt,specificity_matrix_melt$Method=="SVM-Nu"),filter(specificity_matrix_melt_opt,specificity_matrix_melt_opt$Method=="SVM-Nu_OPT"))
+
+ggplot(spec_init_opt,mapping=aes(x=Method,y=Specificity))+
+            geom_boxplot()
+
+specificity_matrix_melt_opt
+```
+Overall, we sacrificed a miniscule amount of sensitivity for the sake of predicting our absentee workers who are absent for more than two days.
