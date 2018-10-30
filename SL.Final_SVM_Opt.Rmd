@@ -307,19 +307,21 @@ In this section, we will explore regular trees, random forest, LDA, QDA, and SVM
 
 ```{r}
 set.seed(1842)
-# training test split
-id <- holdout(absentee.work$Absenteeism.time.in.hours,
-              ratio=.6,
-              mode='stratified')
-  
-absentee.tr <-  absentee.work[id$tr,]
-absentee.te <-  absentee.work[id$ts,]
+
 R <- 50
 error_matrix <-  matrix(0, ncol=6, nrow=R)
 sensitivity_matrix <-  matrix(0, ncol=6, nrow=R)
 specificity_matrix <-   matrix(0, ncol=6, nrow=R)
   
 for (r in 1:R) {
+  # training test split
+id <- rminer::holdout(absentee.work$Absenteeism.time.in.hours,
+              ratio=.6,
+              mode='stratified')
+  
+absentee.tr <-  absentee.work[id$tr,]
+absentee.te <-  absentee.work[id$ts,]
+
   # a. Run regular trees
   tree_mod <-  rpart(Absenteeism.time.in.hours ~ .,
                      data = absentee.tr)      
@@ -448,6 +450,10 @@ colnames(specificity_matrix_melt) <- c('Method','Specificity')
 ggplot(specificity_matrix_melt,mapping=aes(x=Method,y=Specificity))+
             geom_boxplot()
 ```
+
+```{r}
+cf
+```
   
 # Section 5:  Optimize Models
 Based on the initial exploration of the trees, random forest, LDA, QDA, and SVM, the SVM-Nu model consistently outperformed the others despite being in an unoptimized state.  As such, select SVM-Nu as the model of choice for this dataset, and proceed to optimize.  
@@ -464,7 +470,7 @@ specificity_matrix <- matrix(0, ncol=2, nrow=R)
 for (r in 1:R) {
   
   # training test split
-  id <- holdout(absentee.work$Absenteeism.time.in.hours,
+  id <- rminer::holdout(absentee.work$Absenteeism.time.in.hours,
                 ratio=.6,
                 mode='stratified')
   
@@ -478,13 +484,13 @@ for (r in 1:R) {
 
         #  Create a sequence to try out 20 values between 0.01 and 0.99
         # note: 0 and 1 are not valid values to try   
-        v.C <- seq(0.01,.99, length=n.C)
+        v.C <- seq(0.001,.99, length=n.C)
         cv.for.C <- numeric(n.C)
       
         for(j in 1:n.C) {
           
             # training test split (60-40 tr/te split)
-             id <- holdout(absentee.tr$Absenteeism.time.in.hours,
+             id <- rminer::holdout(absentee.tr$Absenteeism.time.in.hours,
                ratio=.6,
                mode='stratified')
   
@@ -525,7 +531,7 @@ for (r in 1:R) {
         for(j in 1:n.nu) {
           
             # training test split (60-40 tr/te split)
-             id <- holdout(absentee.tr$Absenteeism.time.in.hours,
+             id <- rminer::holdout(absentee.tr$Absenteeism.time.in.hours,
                ratio=.6,
                mode='stratified')
   
@@ -611,6 +617,10 @@ colnames(specificity_matrix_melt_opt) <- c('Method','Specificity')
 #boxplot of the errors
 ggplot(specificity_matrix_melt_opt,mapping=aes(x=Method,y=Specificity))+
             geom_boxplot()
+```
+
+```{r}
+cf
 ```
 
 ##How did the optimized models perform compared to the base models?
